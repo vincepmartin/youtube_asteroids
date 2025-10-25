@@ -89,6 +89,7 @@
 
       let ships = [];
       let bullets = [];
+     let explosions = [];
       let gameRunning = false;
       let gameLoop;
 
@@ -99,7 +100,7 @@
           this.x = x;
           this.y = y;
           this.angle = Math.random() * Math.PI * 2;
-          this.speed = Math.min(viewCount / 1000000 + 1, 5); // Max speed of 5
+          this.speed = Math.min(viewCount / 2000000 + 0.5, 2.5); // Slower ships, max speed of 2.5
           this.health = 100;
           this.color = color;
           this.size = 15;
@@ -282,8 +283,8 @@
         constructor(x, y, angle, color, owner) {
           this.x = x;
           this.y = y;
-          this.vx = Math.cos(angle) * 8;
-          this.vy = Math.sin(angle) * 8;
+          this.vx = Math.cos(angle) * 6; // Slower bullets too
+          this.vy = Math.sin(angle) * 6;
           this.color = color;
           this.owner = owner;
           this.life = 100; // Bullets disappear after 100 frames
@@ -310,6 +311,11 @@
               if (distance < ship.size) {
                 ship.takeDamage(25);
                 this.life = 0; // Destroy bullet
+
+               // Create explosion when ship is destroyed
+               if (ship.health <= 0) {
+                 createExplosion(ship.x, ship.y, ship.color);
+               }
               }
             }
           });
@@ -327,6 +333,92 @@
         }
       }
 
+     class Particle {
+       constructor(x, y, color) {
+         this.x = x;
+         this.y = y;
+         this.vx = (Math.random() - 0.5) * 10;
+         this.vy = (Math.random() - 0.5) * 10;
+         this.life = 1.0;
+         this.decay = Math.random() * 0.02 + 0.01;
+         this.size = Math.random() * 4 + 2;
+         this.color = color;
+         this.alpha = 1.0;
+       }
+
+       update() {
+         this.x += this.vx;
+         this.y += this.vy;
+         this.vx *= 0.98; // friction
+         this.vy *= 0.98;
+         this.life -= this.decay;
+         this.alpha = this.life;
+         this.size *= 0.995;
+       }
+
+       draw() {
+         ctx.save();
+         ctx.globalAlpha = this.alpha;
+         ctx.fillStyle = this.color;
+         ctx.beginPath();
+         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+         ctx.fill();
+         
+         // Add glow effect
+         ctx.shadowBlur = 10;
+         ctx.shadowColor = this.color;
+         ctx.beginPath();
+         ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+         ctx.fill();
+         ctx.restore();
+       }
+
+       isDead() {
+         return this.life <= 0 || this.size <= 0.5;
+       }
+     }
+
+     class Explosion {
+       constructor(x, y, color) {
+         this.particles = [];
+         this.life = 1.0;
+         
+         // Create particles for the explosion
+         for (let i = 0; i < 20; i++) {
+           this.particles.push(new Particle(x, y, color));
+         }
+         
+         // Add some bright white particles for flash effect
+         for (let i = 0; i < 10; i++) {
+           this.particles.push(new Particle(x, y, '#ffffff'));
+         }
+         
+         // Add some orange/red particles for fire effect
+         const fireColors = ['#ff4500', '#ff6600', '#ff8800', '#ffaa00'];
+         for (let i = 0; i < 15; i++) {
+           const fireColor = fireColors[Math.floor(Math.random() * fireColors.length)];
+           this.particles.push(new Particle(x, y, fireColor));
+         }
+       }
+
+       update() {
+         this.particles.forEach(particle => particle.update());
+         this.particles = this.particles.filter(particle => !particle.isDead());
+         this.life -= 0.02;
+       }
+
+       draw() {
+         this.particles.forEach(particle => particle.draw());
+       }
+
+       isDead() {
+         return this.particles.length === 0 || this.life <= 0;
+       }
+     }
+
+     function createExplosion(x, y, color) {
+       explosions.push(new Explosion(x, y, color));
+     }
       async function loadShipsFromJson() {
         const urlInput = document.getElementById("jsonUrl");
         const url = urlInput.value.trim();
@@ -352,6 +444,7 @@
           // Clear existing ships
           ships = [];
           bullets = [];
+         explosions = [];
 
           // Parse feed entries
           if (
@@ -460,6 +553,13 @@
           return !bullet.isDead();
         });
 
+       // Update and draw explosions
+       explosions.forEach((explosion) => {
+         explosion.update();
+         explosion.draw();
+       });
+       explosions = explosions.filter(explosion => !explosion.isDead());
+
         // Check for winner
         const aliveShips = ships.filter((ship) => ship.health > 0);
         if (aliveShips.length === 1) {
@@ -480,6 +580,7 @@
         gameRunning = false;
         ships = [];
         bullets = [];
+       explosions = [];
         updateShipList();
         document.getElementById("winner").innerHTML = "";
 
