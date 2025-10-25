@@ -1,0 +1,533 @@
+## Me
+
+> Context:
+>
+> - <group>full_stack_dev</group>
+
+Make me a javascript asteroids game, all contained in @{full_stack_dev} my asteroids.html file. I want it to take as input a name and a view_count which would be mapped to the speed of the asteroids ship. Each ship will be comptuer controlled and will fight each other. Once one wins, it will say "<winner> is the most powerful youtube video!"
+
+## CodeCompanion (Anthropic)
+
+### Reasoning
+
+The user wants me to create an Asteroids game in HTML/JavaScript with the following requirements:
+
+1. All code should be contained in a single HTML file called "asteroids.html"
+2. The game should take input for name and view_count
+3. The view_count should map to the ship's speed
+4. Ships should be computer-controlled and fight each other
+5. When one wins, it should display "<winner> is the most powerful youtube video!"
+
+This sounds like they want multiple ships fighting each other, not the traditional asteroids game. It's more like a battle royale with ships.
+
+Let me plan this step by step:
+
+1. Create an HTML file with a canvas for the game
+2. Add input fields for name and view_count
+3. Create a Ship class that uses view_count to determine speed
+4. Implement ship movement, collision detection, and combat
+5. Add game logic for multiple computer-controlled ships
+6. Display winner message
+
+I'll need to create the asteroids.html file with all the HTML, CSS, and JavaScript contained within it.
+
+### Response
+
+I'll create a JavaScript asteroids battle game where ships fight each other based on their YouTube view counts. Let me build this step by step:
+
+**Plan:**
+
+1. Create HTML file with canvas and input fields
+2. Implement Ship class with speed based on view_count
+3. Add computer-controlled movement and combat
+4. Implement collision detection and battle mechanics
+5. Display winner with YouTube-themed message
+
+Created file `asteroids.html`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Asteroids Battle</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        background: #000;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+
+      canvas {
+        border: 2px solid #fff;
+        background: #111;
+      }
+
+      .controls {
+        margin: 20px 0;
+      }
+
+      input {
+        margin: 5px;
+        padding: 5px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #666;
+      }
+
+      button {
+        padding: 10px 20px;
+        background: #ff0000;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        margin: 5px;
+      }
+
+      button:hover {
+        background: #cc0000;
+      }
+
+      .ship-list {
+        margin: 20px 0;
+        text-align: left;
+        display: inline-block;
+      }
+
+      .winner {
+        font-size: 24px;
+        color: #ff0000;
+        font-weight: bold;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🚀 YouTube Asteroids Battle Royale 🚀</h1>
+
+    <div class="controls">
+      <input type="text" id="shipName" placeholder="YouTube Video Name" />
+      <input type="number" id="viewCount" placeholder="View Count" />
+      <button onclick="addShip()">Add Ship</button>
+      <button onclick="startBattle()">Start Battle!</button>
+      <button onclick="resetGame()">Reset</button>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div class="ship-list">
+      <h3>Ships in Battle:</h3>
+      <div id="shipList"></div>
+    </div>
+
+    <div id="winner" class="winner"></div>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      let ships = [];
+      let bullets = [];
+      let gameRunning = false;
+      let gameLoop;
+
+      class Ship {
+        constructor(name, viewCount, x, y, color) {
+          this.name = name;
+          this.viewCount = viewCount;
+          this.x = x;
+          this.y = y;
+          this.angle = Math.random() * Math.PI * 2;
+          this.speed = Math.min(viewCount / 1000000 + 1, 5); // Max speed of 5
+          this.health = 100;
+          this.color = color;
+          this.size = 15;
+          this.lastShot = 0;
+          this.target = null;
+          this.vx = 0;
+          this.vy = 0;
+
+          // AI behavior parameters
+          this.changeDirectionTimer = 0;
+          this.avoidanceRadius = 50;
+        }
+
+        update() {
+          if (this.health <= 0) return;
+
+          // AI behavior
+          this.aiUpdate();
+
+          // Move ship
+          this.x += this.vx;
+          this.y += this.vy;
+
+          // Wrap around screen
+          if (this.x < 0) this.x = canvas.width;
+          if (this.x > canvas.width) this.x = 0;
+          if (this.y < 0) this.y = canvas.height;
+          if (this.y > canvas.height) this.y = 0;
+
+          // Shoot at enemies
+          if (Date.now() - this.lastShot > 500) {
+            // Shoot every 500ms
+            this.shoot();
+            this.lastShot = Date.now();
+          }
+        }
+
+        aiUpdate() {
+          const aliveShips = ships.filter((s) => s.health > 0 && s !== this);
+          if (aliveShips.length === 0) return;
+
+          // Find nearest enemy
+          let nearestEnemy = null;
+          let nearestDistance = Infinity;
+
+          aliveShips.forEach((ship) => {
+            const dist = this.distanceTo(ship);
+            if (dist < nearestDistance) {
+              nearestDistance = dist;
+              nearestEnemy = ship;
+            }
+          });
+
+          if (nearestEnemy) {
+            // Calculate angle to enemy
+            const dx = nearestEnemy.x - this.x;
+            const dy = nearestEnemy.y - this.y;
+            const angleToEnemy = Math.atan2(dy, dx);
+
+            // Add some randomness for interesting movement
+            const randomFactor =
+              Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.5;
+            const targetAngle = angleToEnemy + randomFactor;
+
+            // Update velocity based on angle and speed
+            this.vx = Math.cos(targetAngle) * this.speed;
+            this.vy = Math.sin(targetAngle) * this.speed;
+
+            // Point ship in direction of movement
+            this.angle = targetAngle;
+
+            // Avoid other ships
+            aliveShips.forEach((ship) => {
+              const dist = this.distanceTo(ship);
+              if (dist < this.avoidanceRadius && dist > 0) {
+                const avoidAngle = Math.atan2(this.y - ship.y, this.x - ship.x);
+                this.vx += Math.cos(avoidAngle) * 2;
+                this.vy += Math.sin(avoidAngle) * 2;
+              }
+            });
+
+            // Limit speed
+            const currentSpeed = Math.sqrt(
+              this.vx * this.vx + this.vy * this.vy,
+            );
+            if (currentSpeed > this.speed) {
+              this.vx = (this.vx / currentSpeed) * this.speed;
+              this.vy = (this.vy / currentSpeed) * this.speed;
+            }
+          }
+        }
+
+        shoot() {
+          const aliveEnemies = ships.filter((s) => s.health > 0 && s !== this);
+          if (aliveEnemies.length === 0) return;
+
+          // Find best target (closest)
+          let target = aliveEnemies.reduce((closest, ship) => {
+            const dist = this.distanceTo(ship);
+            return dist < this.distanceTo(closest) ? ship : closest;
+          });
+
+          // Predict target position
+          const dx = target.x - this.x;
+          const dy = target.y - this.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          // Lead the target
+          const bulletSpeed = 8;
+          const timeToTarget = distance / bulletSpeed;
+          const predictedX = target.x + target.vx * timeToTarget;
+          const predictedY = target.y + target.vy * timeToTarget;
+
+          const aimAngle = Math.atan2(predictedY - this.y, predictedX - this.x);
+
+          bullets.push(new Bullet(this.x, this.y, aimAngle, this.color, this));
+        }
+
+        distanceTo(other) {
+          const dx = other.x - this.x;
+          const dy = other.y - this.y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        takeDamage(damage) {
+          this.health -= damage;
+          if (this.health < 0) this.health = 0;
+        }
+
+        draw() {
+          if (this.health <= 0) return;
+
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.angle);
+
+          // Draw ship
+          ctx.strokeStyle = this.color;
+          ctx.fillStyle = this.color + "40";
+          ctx.lineWidth = 2;
+
+          ctx.beginPath();
+          ctx.moveTo(this.size, 0);
+          ctx.lineTo(-this.size, this.size / 2);
+          ctx.lineTo(-this.size / 2, 0);
+          ctx.lineTo(-this.size, -this.size / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+
+          // Draw health bar
+          const barWidth = 30;
+          const barHeight = 4;
+          ctx.fillStyle = "#ff0000";
+          ctx.fillRect(
+            this.x - barWidth / 2,
+            this.y - this.size - 10,
+            barWidth,
+            barHeight,
+          );
+          ctx.fillStyle = "#00ff00";
+          ctx.fillRect(
+            this.x - barWidth / 2,
+            this.y - this.size - 10,
+            barWidth * (this.health / 100),
+            barHeight,
+          );
+
+          // Draw name
+          ctx.fillStyle = "#fff";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(this.name, this.x, this.y - this.size - 15);
+        }
+      }
+
+      class Bullet {
+        constructor(x, y, angle, color, owner) {
+          this.x = x;
+          this.y = y;
+          this.vx = Math.cos(angle) * 8;
+          this.vy = Math.sin(angle) * 8;
+          this.color = color;
+          this.owner = owner;
+          this.life = 100; // Bullets disappear after 100 frames
+        }
+
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.life--;
+
+          // Wrap around screen
+          if (this.x < 0) this.x = canvas.width;
+          if (this.x > canvas.width) this.x = 0;
+          if (this.y < 0) this.y = canvas.height;
+          if (this.y > canvas.height) this.y = 0;
+
+          // Check collision with ships
+          ships.forEach((ship) => {
+            if (ship !== this.owner && ship.health > 0) {
+              const dx = ship.x - this.x;
+              const dy = ship.y - this.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+
+              if (distance < ship.size) {
+                ship.takeDamage(25);
+                this.life = 0; // Destroy bullet
+              }
+            }
+          });
+        }
+
+        draw() {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        isDead() {
+          return this.life <= 0;
+        }
+      }
+
+      function addShip() {
+        const nameInput = document.getElementById("shipName");
+        const viewCountInput = document.getElementById("viewCount");
+
+        const name = nameInput.value.trim();
+        const viewCount = parseInt(viewCountInput.value);
+
+        if (!name || !viewCount || viewCount < 0) {
+          alert("Please enter a valid name and view count!");
+          return;
+        }
+
+        const colors = [
+          "#ff0000",
+          "#00ff00",
+          "#0000ff",
+          "#ffff00",
+          "#ff00ff",
+          "#00ffff",
+          "#orange",
+          "#purple",
+        ];
+        const color = colors[ships.length % colors.length];
+
+        const x = Math.random() * (canvas.width - 100) + 50;
+        const y = Math.random() * (canvas.height - 100) + 50;
+
+        ships.push(new Ship(name, viewCount, x, y, color));
+
+        updateShipList();
+        nameInput.value = "";
+        viewCountInput.value = "";
+      }
+
+      function updateShipList() {
+        const shipList = document.getElementById("shipList");
+        shipList.innerHTML = ships
+          .map(
+            (ship) =>
+              `<div style="color: ${ship.color};">
+                    ${ship.name} - ${ship.viewCount.toLocaleString()} views (Speed: ${ship.speed.toFixed(1)})
+                </div>`,
+          )
+          .join("");
+      }
+
+      function startBattle() {
+        if (ships.length < 2) {
+          alert("Need at least 2 ships to start battle!");
+          return;
+        }
+
+        gameRunning = true;
+        document.getElementById("winner").innerHTML = "";
+
+        gameLoop = setInterval(update, 16); // ~60 FPS
+      }
+
+      function update() {
+        // Clear canvas
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Update and draw ships
+        ships.forEach((ship) => {
+          ship.update();
+          ship.draw();
+        });
+
+        // Update and draw bullets
+        bullets = bullets.filter((bullet) => {
+          bullet.update();
+          bullet.draw();
+          return !bullet.isDead();
+        });
+
+        // Check for winner
+        const aliveShips = ships.filter((ship) => ship.health > 0);
+        if (aliveShips.length === 1) {
+          clearInterval(gameLoop);
+          gameRunning = false;
+          document.getElementById("winner").innerHTML =
+            `🏆 ${aliveShips[0].name} is the most powerful YouTube video! 🏆`;
+        } else if (aliveShips.length === 0) {
+          clearInterval(gameLoop);
+          gameRunning = false;
+          document.getElementById("winner").innerHTML =
+            "💥 All ships destroyed! 💥";
+        }
+      }
+
+      function resetGame() {
+        clearInterval(gameLoop);
+        gameRunning = false;
+        ships = [];
+        bullets = [];
+        updateShipList();
+        document.getElementById("winner").innerHTML = "";
+
+        // Clear canvas
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Initial canvas clear
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw instructions
+      ctx.fillStyle = "#666";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        "Add YouTube videos and watch them battle!",
+        canvas.width / 2,
+        canvas.height / 2 - 20,
+      );
+      ctx.fillText(
+        "Higher view count = faster ships!",
+        canvas.width / 2,
+        canvas.height / 2 + 20,
+      );
+    </script>
+  </body>
+</html>
+```
+
+Perfect! I've created your YouTube Asteroids Battle game. Here's what I built:
+
+## Game Features:
+
+- **Ship Speed Mapping**: View count determines ship speed (higher views = faster movement)
+- **Computer-Controlled Combat**: All ships are AI-controlled and automatically fight each other
+- **Intelligent AI**: Ships hunt the nearest enemy, avoid collisions, and lead their targets
+- **Health System**: Ships have health bars and take damage from bullets
+- **Victory Message**: Winner displays as "X is the most powerful YouTube video!"
+
+## How to Play:
+
+1. Open `asteroids.html` in your browser
+2. Add ships by entering a name and view count
+3. Click "Start Battle!" to watch them fight
+4. The ship with the highest view count will be fastest and likely win
+
+## Technical Details:
+
+- Ships automatically target and shoot at enemies
+- Predictive aiming system leads moving targets
+- Collision detection for bullets and ships
+- Screen wrapping for endless battlefield
+- Real-time health bars and ship status
+
+Try adding some popular YouTube videos with different view counts to see how the speed affects the battle outcome!
+
+Would you like me to add any specific features like asteroids obstacles, power-ups, or different weapon types?
+
+## Me
+
+> Context:
+>
+> - <group>full_stack_dev</group>
