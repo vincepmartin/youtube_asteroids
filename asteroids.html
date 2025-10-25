@@ -243,7 +243,7 @@
           this.x = x;
           this.y = y;
           this.angle = Math.random() * Math.PI * 2;
-          this.speed = Math.min(viewCount / 2000000 + 0.5, 2.5); // Slower ships, max speed of 2.5
+          this.speed = 1.0; // Default speed, will be set based on ranking
           this.health = 100;
           this.color = color;
           this.size = 15;
@@ -925,6 +925,27 @@
             throw new Error("No valid ships found in JSON data.");
           }
 
+          // Sort ships by view count (descending) and assign ranking-based speeds
+          ships.sort((a, b) => b.viewCount - a.viewCount);
+
+          // Assign speeds based on ranking - higher rank (lower index) = higher speed
+          ships.forEach((ship, index) => {
+            // Speed range from 5.0 (1st place) to 1.0 (last place)
+            const minSpeed = 1.0;
+            const maxSpeed = 5.0;
+            const speedRange = maxSpeed - minSpeed;
+
+            if (ships.length === 1) {
+              ship.speed = maxSpeed;
+            } else {
+              // Linear interpolation based on ranking
+              const rankingRatio = index / (ships.length - 1);
+              ship.speed = maxSpeed - rankingRatio * speedRange;
+            }
+
+            // Round to 1 decimal place for cleaner display
+            ship.speed = Math.round(ship.speed * 10) / 10;
+          });
           updateShipList();
 
           // Clear winner message and canvas
@@ -1012,7 +1033,7 @@
           const winner = aliveShips[0];
           document.getElementById("winner").innerHTML =
             `🏆 ${winner.name} is the most powerful YouTube video! 🏆`;
-          
+
           // Show dramatic celebration screen
           showWinnerCelebration(winner);
         } else if (aliveShips.length === 0) {
