@@ -5,57 +5,198 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>YouTube Asteroids Battle</title>
     <style>
-      body {
-        margin: 0;
-        padding: 20px;
-        background: #000;
-        color: #fff;
-        font-family: Arial, sans-serif;
-        text-align: center;
-      }
+       body {
+         margin: 0;
+         padding: 20px;
+         background: #000;
+         color: #fff;
+         font-family: Arial, sans-serif;
+         text-align: center;
+       }
 
-      canvas {
-        border: 2px solid #fff;
-        background: #111;
-      }
+      function showShipIntro(ship, callback) {
+      function showShipIntro(ship, timePerShip, callback) {
+        introRunning = true;
 
-      .controls {
-        margin: 20px 0;
-      }
+        // Clear canvas
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      input {
-        margin: 5px;
-        padding: 5px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #666;
-      }
+       // Create a robust color validation function
+       function getValidColor(color) {
+         // If it's already a valid hex color, use it
+         if (color.startsWith('#') && color.length === 7) {
+           return color;
+         }
 
-      button {
-        padding: 10px 20px;
-        background: #ff0000;
-        color: #fff;
-        border: none;
-        cursor: pointer;
-        margin: 5px;
-      }
+         // Convert named colors to hex
+         const namedColors = {
+           'orange': '#ff8c00',
+           'purple': '#800080',
+           'lime': '#32cd32',
+           'cyan': '#00ffff',
+           'magenta': '#ff00ff',
+           'yellow': '#ffff00',
+           'red': '#ff0000',
+           'green': '#00ff00',
+           'blue': '#0000ff'
+         };
 
-      button:hover {
-        background: #cc0000;
-      }
+         // Remove # if it exists with a named color
+         const cleanColor = color.replace('#', '').toLowerCase();
 
-      .ship-list {
-        margin: 20px 0;
-        text-align: left;
-        display: inline-block;
-      }
+         // Return hex equivalent or fallback to white
+         return namedColors[cleanColor] || '#ffffff';
+       }
 
-      .winner {
-        font-size: 24px;
-        color: #ff0000;
-        font-weight: bold;
-        margin: 20px 0;
+       const validColor = getValidColor(ship.color);
+
+        // Draw dramatic background
+        const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, 300);
+        gradient.addColorStop(0, validColor + "40");
+        gradient.addColorStop(1, "#000000");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw ship large in center
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(3, 3); // Make ship 3x larger
+        ctx.rotate(ship.angle);
+
+        // Draw ship with glow effect
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = validColor;
+        ctx.strokeStyle = validColor;
+        ctx.fillStyle = validColor + "80";
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(ship.size, 0);
+        ctx.lineTo(-ship.size, ship.size / 2);
+        ctx.lineTo(-ship.size / 2, 0);
+        ctx.lineTo(-ship.size, -ship.size / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Draw title with dramatic effect
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = validColor;
+        ctx.lineWidth = 2;
+
+        // Main title
+        ctx.font = "bold 32px Arial";
+        ctx.strokeText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+        ctx.fillText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+
+        // Stats
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#ffff00";
+        ctx.fillText(`${ship.viewCount.toLocaleString()} views`, canvas.width / 2, canvas.height / 2 + 150);
+        ctx.fillText(`Speed: ${ship.speed.toFixed(1)}`, canvas.width / 2, canvas.height / 2 + 175);
+
+        // Warning text
+        ctx.font = "bold 24px Arial";
+        ctx.fillStyle = "#ff0000";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+        ctx.fillText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("INCOMING THREAT DETECTED", canvas.width / 2, canvas.height / 2 - 120);
+
+        // Add some particle effects around the ship
+        for (let i = 0; i < 10; i++) {
+          const angle = (Date.now() * 0.01 + i * 0.6) % (Math.PI * 2);
+          const radius = 100 + Math.sin(Date.now() * 0.005 + i) * 20;
+          const x = canvas.width / 2 + Math.cos(angle) * radius;
+          const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+          ctx.fillStyle = validColor + "80";
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Use calculated time per ship
+        setTimeout(() => {
+          currentIntroShip++;
+          if (currentIntroShip < ships.length) {
+            showShipIntro(ships[currentIntroShip], timePerShip, callback);
+          } else {
+            // Intro complete
+            introRunning = false;
+            currentIntroShip = 0;
+
+            // Show final "BATTLE START" screen
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.font = "bold 48px Arial";
+            ctx.fillStyle = "#ff0000";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.strokeText("BATTLE START!", canvas.width / 2, canvas.height / 2);
+            ctx.fillText("BATTLE START!", canvas.width / 2, canvas.height / 2);
+
+            setTimeout(() => {
+              // Clear canvas and show normal game view
+              ctx.fillStyle = "#111";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              callback();
+            }, 200); // Final screen: 0.2 seconds
+          }
+        }, timePerShip); // Dynamic time per ship
       }
+       canvas {
+         border: 2px solid #fff;
+         background: #111;
+       }
+
+       .controls {
+         margin: 20px 0;
+       }
+
+       input {
+         margin: 5px;
+         padding: 5px;
+         background: #333;
+         color: #fff;
+         border: 1px solid #666;
+       }
+
+       button {
+         padding: 10px 20px;
+         background: #ff0000;
+         color: #fff;
+         border: none;
+         cursor: pointer;
+         margin: 5px;
+       }
+
+       button:hover {
+         background: #cc0000;
+       }
+
+       .ship-list {
+         margin: 20px 0;
+         text-align: left;
+         display: inline-block;
+       }
+
+       .winner {
+         font-size: 24px;
+         color: #ff0000;
+         font-weight: bold;
+         margin: 20px 0;
+       }
     </style>
   </head>
   <body>
@@ -89,8 +230,10 @@
 
       let ships = [];
       let bullets = [];
-     let explosions = [];
+      let explosions = [];
       let gameRunning = false;
+      let introRunning = false;
+      let currentIntroShip = 0;
       let gameLoop;
 
       class Ship {
@@ -312,10 +455,10 @@
                 ship.takeDamage(25);
                 this.life = 0; // Destroy bullet
 
-               // Create explosion when ship is destroyed
-               if (ship.health <= 0) {
-                 createExplosion(ship.x, ship.y, ship.color);
-               }
+                // Create explosion when ship is destroyed
+                if (ship.health <= 0) {
+                  createExplosion(ship.x, ship.y, ship.color);
+                }
               }
             }
           });
@@ -333,92 +476,371 @@
         }
       }
 
-     class Particle {
-       constructor(x, y, color) {
-         this.x = x;
-         this.y = y;
-         this.vx = (Math.random() - 0.5) * 10;
-         this.vy = (Math.random() - 0.5) * 10;
-         this.life = 1.0;
-         this.decay = Math.random() * 0.02 + 0.01;
-         this.size = Math.random() * 4 + 2;
-         this.color = color;
-         this.alpha = 1.0;
-       }
+      class Particle {
+        constructor(x, y, color) {
+          this.x = x;
+          this.y = y;
+          this.vx = (Math.random() - 0.5) * 10;
+          this.vy = (Math.random() - 0.5) * 10;
+          this.life = 1.0;
+          this.decay = Math.random() * 0.02 + 0.01;
+          this.size = Math.random() * 4 + 2;
+          this.color = color;
+          this.alpha = 1.0;
+        }
 
-       update() {
-         this.x += this.vx;
-         this.y += this.vy;
-         this.vx *= 0.98; // friction
-         this.vy *= 0.98;
-         this.life -= this.decay;
-         this.alpha = this.life;
-         this.size *= 0.995;
-       }
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vx *= 0.98; // friction
+          this.vy *= 0.98;
+          this.life -= this.decay;
+          this.alpha = this.life;
+          this.size *= 0.995;
+        }
 
-       draw() {
-         ctx.save();
-         ctx.globalAlpha = this.alpha;
-         ctx.fillStyle = this.color;
-         ctx.beginPath();
-         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-         ctx.fill();
-         
-         // Add glow effect
-         ctx.shadowBlur = 10;
-         ctx.shadowColor = this.color;
-         ctx.beginPath();
-         ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
-         ctx.fill();
-         ctx.restore();
-       }
+        draw() {
+          ctx.save();
+          ctx.globalAlpha = this.alpha;
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
 
-       isDead() {
-         return this.life <= 0 || this.size <= 0.5;
-       }
-     }
+          // Add glow effect
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
 
-     class Explosion {
-       constructor(x, y, color) {
-         this.particles = [];
-         this.life = 1.0;
-         
-         // Create particles for the explosion
-         for (let i = 0; i < 20; i++) {
-           this.particles.push(new Particle(x, y, color));
-         }
-         
-         // Add some bright white particles for flash effect
-         for (let i = 0; i < 10; i++) {
-           this.particles.push(new Particle(x, y, '#ffffff'));
-         }
-         
-         // Add some orange/red particles for fire effect
-         const fireColors = ['#ff4500', '#ff6600', '#ff8800', '#ffaa00'];
-         for (let i = 0; i < 15; i++) {
-           const fireColor = fireColors[Math.floor(Math.random() * fireColors.length)];
-           this.particles.push(new Particle(x, y, fireColor));
-         }
-       }
+        isDead() {
+          return this.life <= 0 || this.size <= 0.5;
+        }
+      }
 
-       update() {
-         this.particles.forEach(particle => particle.update());
-         this.particles = this.particles.filter(particle => !particle.isDead());
-         this.life -= 0.02;
-       }
+      class Explosion {
+        constructor(x, y, color) {
+          this.particles = [];
+          this.life = 1.0;
 
-       draw() {
-         this.particles.forEach(particle => particle.draw());
-       }
+          // Create particles for the explosion
+          for (let i = 0; i < 20; i++) {
+            this.particles.push(new Particle(x, y, color));
+          }
 
-       isDead() {
-         return this.particles.length === 0 || this.life <= 0;
-       }
-     }
+          // Add some bright white particles for flash effect
+          for (let i = 0; i < 10; i++) {
+            this.particles.push(new Particle(x, y, "#ffffff"));
+          }
 
-     function createExplosion(x, y, color) {
-       explosions.push(new Explosion(x, y, color));
-     }
+          // Add some orange/red particles for fire effect
+          const fireColors = ["#ff4500", "#ff6600", "#ff8800", "#ffaa00"];
+          for (let i = 0; i < 15; i++) {
+            const fireColor =
+              fireColors[Math.floor(Math.random() * fireColors.length)];
+            this.particles.push(new Particle(x, y, fireColor));
+          }
+        }
+
+        update() {
+          this.particles.forEach((particle) => particle.update());
+          this.particles = this.particles.filter(
+            (particle) => !particle.isDead(),
+          );
+          this.life -= 0.02;
+        }
+
+        draw() {
+          this.particles.forEach((particle) => particle.draw());
+        }
+
+        isDead() {
+          return this.particles.length === 0 || this.life <= 0;
+        }
+      }
+
+      function createExplosion(x, y, color) {
+        explosions.push(new Explosion(x, y, color));
+      }
+
+      function showShipIntro(ship, callback) {
+        introRunning = true;
+
+        // Clear canvas
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw dramatic background
+        const gradient = ctx.createRadialGradient(
+          canvas.width / 2,
+          canvas.height / 2,
+          0,
+          canvas.width / 2,
+          canvas.height / 2,
+          300,
+        );
+        gradient.addColorStop(0, ship.color + "40");
+        gradient.addColorStop(1, "#000000");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw ship large in center
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(3, 3); // Make ship 3x larger
+        ctx.rotate(ship.angle);
+
+        // Draw ship with glow effect
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = ship.color;
+        ctx.strokeStyle = ship.color;
+        ctx.fillStyle = ship.color + "80";
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(ship.size, 0);
+        ctx.lineTo(-ship.size, ship.size / 2);
+        ctx.lineTo(-ship.size / 2, 0);
+        ctx.lineTo(-ship.size, -ship.size / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Draw title with dramatic effect
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = ship.color;
+        ctx.lineWidth = 2;
+
+        // Main title
+        ctx.font = "bold 32px Arial";
+        ctx.strokeText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+        ctx.fillText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+
+        // Stats
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#ffff00";
+        ctx.fillText(
+          `${ship.viewCount.toLocaleString()} views`,
+          canvas.width / 2,
+          canvas.height / 2 + 150,
+        );
+        ctx.fillText(
+          `Speed: ${ship.speed.toFixed(1)}`,
+          canvas.width / 2,
+          canvas.height / 2 + 175,
+        );
+
+        // Warning text
+        ctx.font = "bold 24px Arial";
+        ctx.fillStyle = "#ff0000";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+        ctx.fillText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(
+          "INCOMING THREAT DETECTED",
+          canvas.width / 2,
+          canvas.height / 2 - 120,
+        );
+
+        // Add some particle effects around the ship
+        for (let i = 0; i < 10; i++) {
+          const angle = (Date.now() * 0.01 + i * 0.6) % (Math.PI * 2);
+          const radius = 100 + Math.sin(Date.now() * 0.005 + i) * 20;
+          const x = canvas.width / 2 + Math.cos(angle) * radius;
+          const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+          ctx.fillStyle = ship.color + "80";
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Continue for 3 seconds
+        setTimeout(() => {
+          currentIntroShip++;
+          if (currentIntroShip < ships.length) {
+            showShipIntro(ships[currentIntroShip], callback);
+          } else {
+            // Intro complete
+            introRunning = false;
+            currentIntroShip = 0;
+
+            // Show final "BATTLE START" screen
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.font = "bold 48px Arial";
+            ctx.fillStyle = "#ff0000";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.strokeText(
+              "BATTLE START!",
+              canvas.width / 2,
+              canvas.height / 2,
+            );
+            ctx.fillText("BATTLE START!", canvas.width / 2, canvas.height / 2);
+
+            setTimeout(() => {
+              // Clear canvas and show normal game view
+              ctx.fillStyle = "#111";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              callback();
+            }, 2000);
+          }
+        }, 3000);
+      }
+
+      function showShipBatchIntro(callback) {
+        introRunning = true;
+        currentIntroShip = 0;
+
+        // Calculate timing - 2 seconds total, reserve 500ms for battle start screen
+        const totalShipTime = 1500; // 1.5 seconds for all ships
+        const batchCount = Math.ceil(ships.length / 5);
+        const timePerBatch = Math.max(200, totalShipTime / batchCount); // Minimum 200ms per batch
+
+        function showNextBatch() {
+          // Clear canvas
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Get current batch of ships (up to 5)
+          const batchStart = Math.floor(currentIntroShip / 5) * 5;
+          const batchEnd = Math.min(batchStart + 5, ships.length);
+          const currentBatch = ships.slice(batchStart, batchEnd);
+
+          // Draw background gradient using the color of the first ship in batch
+          const primaryShip = currentBatch[0];
+          const gradient = ctx.createRadialGradient(
+            canvas.width / 2,
+            canvas.height / 2,
+            0,
+            canvas.width / 2,
+            canvas.height / 2,
+            300,
+          );
+          gradient.addColorStop(0, primaryShip.color + "20");
+          gradient.addColorStop(1, "#000000");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Warning text
+          ctx.textAlign = "center";
+          ctx.font = "bold 24px Arial";
+          ctx.fillStyle = "#ff0000";
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1;
+          ctx.strokeText("INCOMING THREATS", canvas.width / 2, 80);
+          ctx.fillText("INCOMING THREATS", canvas.width / 2, 80);
+
+          // Draw ships in a row
+          const startX = canvas.width / 2 - (currentBatch.length - 1) * 60;
+          currentBatch.forEach((ship, index) => {
+            const x = startX + index * 120;
+            const y = canvas.height / 2 - 50;
+
+            // Draw ship
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(2, 2);
+            ctx.rotate(ship.angle);
+
+            // Ship glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = ship.color;
+            ctx.strokeStyle = ship.color;
+            ctx.fillStyle = ship.color + "80";
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(ship.size, 0);
+            ctx.lineTo(-ship.size, ship.size / 2);
+            ctx.lineTo(-ship.size / 2, 0);
+            ctx.lineTo(-ship.size, -ship.size / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+
+            // Ship name below
+            ctx.font = "bold 14px Arial";
+            ctx.fillStyle = ship.color;
+            ctx.fillText(ship.name, x, y + 60);
+
+            // View count
+            ctx.font = "12px Arial";
+            ctx.fillStyle = "#ffff00";
+            ctx.fillText(`${ship.viewCount.toLocaleString()}`, x, y + 80);
+          });
+
+          // Particle effects
+          for (let i = 0; i < 15; i++) {
+            const angle = (Date.now() * 0.01 + i * 0.4) % (Math.PI * 2);
+            const radius = 200 + Math.sin(Date.now() * 0.003 + i) * 50;
+            const x = canvas.width / 2 + Math.cos(angle) * radius;
+            const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+            ctx.fillStyle = primaryShip.color + "60";
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          currentIntroShip = batchEnd;
+
+          if (currentIntroShip >= ships.length) {
+            // All ships shown, show battle start
+            setTimeout(() => {
+              introRunning = false;
+              currentIntroShip = 0;
+
+              // Final "BATTLE START" screen
+              ctx.fillStyle = "#000";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              ctx.textAlign = "center";
+              ctx.font = "bold 48px Arial";
+              ctx.fillStyle = "#ff0000";
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 3;
+              ctx.strokeText(
+                "BATTLE START!",
+                canvas.width / 2,
+                canvas.height / 2,
+              );
+              ctx.fillText(
+                "BATTLE START!",
+                canvas.width / 2,
+                canvas.height / 2,
+              );
+
+              setTimeout(() => {
+                ctx.fillStyle = "#111";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                callback();
+              }, 500);
+            }, timePerBatch);
+          } else {
+            // Show next batch
+            setTimeout(showNextBatch, timePerBatch);
+          }
+        }
+
+        showNextBatch();
+      }
+
       async function loadShipsFromJson() {
         const urlInput = document.getElementById("jsonUrl");
         const url = urlInput.value.trim();
@@ -444,7 +866,7 @@
           // Clear existing ships
           ships = [];
           bullets = [];
-         explosions = [];
+          explosions = [];
 
           // Parse feed entries
           if (
@@ -464,12 +886,12 @@
             "#ffff00",
             "#ff00ff",
             "#00ffff",
-            "#orange",
-            "#purple",
-            "#lime",
-            "#cyan",
-            "#magenta",
-            "#yellow",
+            "#ff8c00", // orange
+            "#800080", // purple
+            "#32cd32", // lime
+            "#00ffff", // cyan (duplicate, but safe)
+            "#ff00ff", // magenta (duplicate, but safe)
+            "#ffff00", // yellow (duplicate, but safe)
           ];
 
           data.feed.entry.forEach((entry, index) => {
@@ -503,6 +925,15 @@
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
           alert(`Loaded ${ships.length} ships successfully!`);
+
+          // Start the intro sequence
+          if (ships.length > 0) {
+            currentIntroShip = 0;
+            showShipBatchIntro(() => {
+              // Intro complete - ready to go!
+              console.log("All ships introduced! Ready for battle!");
+            });
+          }
         } catch (error) {
           console.error("Error loading JSON:", error);
           alert(`Error loading ships: ${error.message}`);
@@ -524,6 +955,11 @@
       }
 
       function startBattle() {
+        if (introRunning) {
+          alert("Please wait for ship introductions to finish!");
+          return;
+        }
+
         if (ships.length < 2) {
           alert("Need at least 2 ships to start battle!");
           return;
@@ -553,12 +989,12 @@
           return !bullet.isDead();
         });
 
-       // Update and draw explosions
-       explosions.forEach((explosion) => {
-         explosion.update();
-         explosion.draw();
-       });
-       explosions = explosions.filter(explosion => !explosion.isDead());
+        // Update and draw explosions
+        explosions.forEach((explosion) => {
+          explosion.update();
+          explosion.draw();
+        });
+        explosions = explosions.filter((explosion) => !explosion.isDead());
 
         // Check for winner
         const aliveShips = ships.filter((ship) => ship.health > 0);
@@ -580,7 +1016,7 @@
         gameRunning = false;
         ships = [];
         bullets = [];
-       explosions = [];
+        explosions = [];
         updateShipList();
         document.getElementById("winner").innerHTML = "";
 
