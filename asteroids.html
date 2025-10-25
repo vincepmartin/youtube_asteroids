@@ -62,9 +62,13 @@
     <h1>🚀 YouTube Asteroids Battle Royale 🚀</h1>
 
     <div class="controls">
-      <input type="text" id="shipName" placeholder="YouTube Video Name" />
-      <input type="number" id="viewCount" placeholder="View Count" />
-      <button onclick="addShip()">Add Ship</button>
+      <input
+        type="url"
+        id="jsonUrl"
+        placeholder="JSON Feed URL"
+        style="width: 400px"
+      />
+      <button onclick="loadShipsFromJson()">Load Ships from JSON</button>
       <button onclick="startBattle()">Start Battle!</button>
       <button onclick="resetGame()">Reset</button>
     </div>
@@ -322,38 +326,95 @@
         }
       }
 
-      function addShip() {
-        const nameInput = document.getElementById("shipName");
-        const viewCountInput = document.getElementById("viewCount");
+      async function loadShipsFromJson() {
+        const urlInput = document.getElementById("jsonUrl");
+        const url = urlInput.value.trim();
 
-        const name = nameInput.value.trim();
-        const viewCount = parseInt(viewCountInput.value);
-
-        if (!name || !viewCount || viewCount < 0) {
-          alert("Please enter a valid name and view count!");
+        if (!url) {
+          alert("Please enter a JSON URL!");
           return;
         }
 
-        const colors = [
-          "#ff0000",
-          "#00ff00",
-          "#0000ff",
-          "#ffff00",
-          "#ff00ff",
-          "#00ffff",
-          "#orange",
-          "#purple",
-        ];
-        const color = colors[ships.length % colors.length];
+        try {
+          // Show loading message
+          document.getElementById("shipList").innerHTML =
+            "<div>Loading ships...</div>";
 
-        const x = Math.random() * (canvas.width - 100) + 50;
-        const y = Math.random() * (canvas.height - 100) + 50;
+          // Fetch JSON data
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
-        ships.push(new Ship(name, viewCount, x, y, color));
+          const data = await response.json();
 
-        updateShipList();
-        nameInput.value = "";
-        viewCountInput.value = "";
+          // Clear existing ships
+          ships = [];
+          bullets = [];
+
+          // Parse feed entries
+          if (
+            !data.feed ||
+            !data.feed.entry ||
+            !Array.isArray(data.feed.entry)
+          ) {
+            throw new Error(
+              "Invalid JSON structure. Expected feed.entry array.",
+            );
+          }
+
+          const colors = [
+            "#ff0000",
+            "#00ff00",
+            "#0000ff",
+            "#ffff00",
+            "#ff00ff",
+            "#00ffff",
+            "#orange",
+            "#purple",
+            "#lime",
+            "#cyan",
+            "#magenta",
+            "#yellow",
+          ];
+
+          data.feed.entry.forEach((entry, index) => {
+            try {
+              const name =
+                entry.title?.$t || entry.title || `Video ${index + 1}`;
+              const viewCountStr = entry["yt$statistics"]?.viewCount || "0";
+              const viewCount = parseInt(viewCountStr);
+
+              if (viewCount > 0) {
+                const color = colors[index % colors.length];
+                const x = Math.random() * (canvas.width - 100) + 50;
+                const y = Math.random() * (canvas.height - 100) + 50;
+
+                ships.push(new Ship(name, viewCount, x, y, color));
+              }
+            } catch (entryError) {
+              console.warn(`Error processing entry ${index}:`, entryError);
+            }
+          });
+
+          if (ships.length === 0) {
+            throw new Error("No valid ships found in JSON data.");
+          }
+
+          updateShipList();
+
+          // Clear winner message and canvas
+          document.getElementById("winner").innerHTML = "";
+          ctx.fillStyle = "#111";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          alert(`Loaded ${ships.length} ships successfully!`);
+        } catch (error) {
+          console.error("Error loading JSON:", error);
+          alert(`Error loading ships: ${error.message}`);
+          document.getElementById("shipList").innerHTML =
+            "<div>Failed to load ships.</div>";
+        }
       }
 
       function updateShipList() {
