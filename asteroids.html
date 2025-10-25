@@ -303,9 +303,11 @@
             const dy = nearestEnemy.y - this.y;
             const angleToEnemy = Math.atan2(dy, dx);
 
-            // Add some randomness for interesting movement
+            // Reduce randomness when few ships remain to ensure engagement
             const randomFactor =
-              Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.5;
+              aliveShips.length > 2
+                ? Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.5
+                : Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.1;
             const targetAngle = angleToEnemy + randomFactor;
 
             // Update velocity based on angle and speed
@@ -315,15 +317,21 @@
             // Point ship in direction of movement
             this.angle = targetAngle;
 
-            // Avoid other ships
-            aliveShips.forEach((ship) => {
-              const dist = this.distanceTo(ship);
-              if (dist < this.avoidanceRadius && dist > 0) {
-                const avoidAngle = Math.atan2(this.y - ship.y, this.x - ship.x);
-                this.vx += Math.cos(avoidAngle) * 2;
-                this.vy += Math.sin(avoidAngle) * 2;
-              }
-            });
+            // Reduce avoidance when only 2 ships remain to force engagement
+            const shouldAvoid = aliveShips.length > 2;
+            if (shouldAvoid) {
+              aliveShips.forEach((ship) => {
+                const dist = this.distanceTo(ship);
+                if (dist < this.avoidanceRadius && dist > 0) {
+                  const avoidAngle = Math.atan2(
+                    this.y - ship.y,
+                    this.x - ship.x,
+                  );
+                  this.vx += Math.cos(avoidAngle) * 2;
+                  this.vy += Math.sin(avoidAngle) * 2;
+                }
+              });
+            }
 
             // Limit speed
             const currentSpeed = Math.sqrt(
@@ -1001,8 +1009,12 @@
         if (aliveShips.length === 1) {
           clearInterval(gameLoop);
           gameRunning = false;
+          const winner = aliveShips[0];
           document.getElementById("winner").innerHTML =
-            `🏆 ${aliveShips[0].name} is the most powerful YouTube video! 🏆`;
+            `🏆 ${winner.name} is the most powerful YouTube video! 🏆`;
+          
+          // Show dramatic celebration screen
+          showWinnerCelebration(winner);
         } else if (aliveShips.length === 0) {
           clearInterval(gameLoop);
           gameRunning = false;
@@ -1023,6 +1035,169 @@
         // Clear canvas
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function showWinnerCelebration(winnerShip) {
+        let celebrationFrames = 0;
+        const maxCelebrationFrames = 300; // 5 seconds at 60fps
+
+        function animateCelebration() {
+          celebrationFrames++;
+
+          // Clear canvas with animated background
+          const hue = (celebrationFrames * 3) % 360;
+          const bgColor = `hsl(${hue}, 50%, 10%)`;
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Create victory gradient
+          const gradient = ctx.createRadialGradient(
+            canvas.width / 2,
+            canvas.height / 2,
+            0,
+            canvas.width / 2,
+            canvas.height / 2,
+            400,
+          );
+          gradient.addColorStop(0, winnerShip.color + "40");
+          gradient.addColorStop(0.5, winnerShip.color + "20");
+          gradient.addColorStop(1, "#000000");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Draw winner ship in center with rotation and scaling
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2 - 50);
+          const scale = 3 + Math.sin(celebrationFrames * 0.1) * 0.5;
+          ctx.scale(scale, scale);
+          ctx.rotate(celebrationFrames * 0.05);
+
+          // Ship glow effect
+          ctx.shadowBlur = 30;
+          ctx.shadowColor = winnerShip.color;
+          ctx.strokeStyle = winnerShip.color;
+          ctx.fillStyle = winnerShip.color + "CC";
+          ctx.lineWidth = 4;
+
+          ctx.beginPath();
+          ctx.moveTo(winnerShip.size, 0);
+          ctx.lineTo(-winnerShip.size, winnerShip.size / 2);
+          ctx.lineTo(-winnerShip.size / 2, 0);
+          ctx.lineTo(-winnerShip.size, -winnerShip.size / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // Animated victory text
+          ctx.textAlign = "center";
+          const textScale = 1 + Math.sin(celebrationFrames * 0.15) * 0.2;
+
+          // VICTORY text
+          ctx.font = `bold ${48 * textScale}px Arial`;
+          ctx.fillStyle = "#FFD700";
+          ctx.strokeStyle = "#FF0000";
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = "#FFD700";
+
+          ctx.strokeText("VICTORY!", canvas.width / 2, canvas.height / 2 + 120);
+          ctx.fillText("VICTORY!", canvas.width / 2, canvas.height / 2 + 120);
+
+          // Winner name
+          ctx.font = `bold ${24 * textScale}px Arial`;
+          ctx.fillStyle = winnerShip.color;
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 2;
+          ctx.shadowColor = winnerShip.color;
+
+          ctx.strokeText(
+            winnerShip.name,
+            canvas.width / 2,
+            canvas.height / 2 + 160,
+          );
+          ctx.fillText(
+            winnerShip.name,
+            canvas.width / 2,
+            canvas.height / 2 + 160,
+          );
+
+          // "Most Powerful YouTube Video!" text
+          ctx.font = "bold 20px Arial";
+          ctx.fillStyle = "#FFFFFF";
+          ctx.strokeStyle = winnerShip.color;
+          ctx.lineWidth = 1;
+
+          ctx.strokeText(
+            "Most Powerful YouTube Video!",
+            canvas.width / 2,
+            canvas.height / 2 + 190,
+          );
+          ctx.fillText(
+            "Most Powerful YouTube Video!",
+            canvas.width / 2,
+            canvas.height / 2 + 190,
+          );
+
+          // View count celebration
+          ctx.font = "18px Arial";
+          ctx.fillStyle = "#FFD700";
+          ctx.fillText(
+            `${winnerShip.viewCount.toLocaleString()} Views!`,
+            canvas.width / 2,
+            canvas.height / 2 + 220,
+          );
+
+          // Create celebration particles
+          for (let i = 0; i < 20; i++) {
+            const angle =
+              (celebrationFrames * 0.02 + i * 0.314) % (Math.PI * 2);
+            const radius = 100 + Math.sin(celebrationFrames * 0.05 + i) * 50;
+            const x = canvas.width / 2 + Math.cos(angle) * radius;
+            const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+            ctx.fillStyle = winnerShip.color + "80";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = winnerShip.color;
+            ctx.beginPath();
+            ctx.arc(
+              x,
+              y,
+              4 + Math.sin(celebrationFrames * 0.1 + i) * 2,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+
+          // Add sparkle effects
+          for (let i = 0; i < 15; i++) {
+            const sparkleX = Math.random() * canvas.width;
+            const sparkleY = Math.random() * canvas.height;
+            const sparkleSize = Math.random() * 3 + 1;
+            const sparkleAlpha =
+              Math.sin(celebrationFrames * 0.2 + i) * 0.5 + 0.5;
+
+            ctx.fillStyle = `rgba(255, 215, 0, ${sparkleAlpha})`;
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "#FFD700";
+            ctx.beginPath();
+            ctx.arc(sparkleX, sparkleY, sparkleSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Continue animation if not finished
+          if (celebrationFrames < maxCelebrationFrames) {
+            requestAnimationFrame(animateCelebration);
+          } else {
+            // Reset to normal view after celebration
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+
+        // Start the celebration animation
+        animateCelebration();
       }
 
       // Initial canvas clear
