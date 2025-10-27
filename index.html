@@ -1,0 +1,1244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YouTube Asteroids Battle</title>
+    <style>
+       body {
+         margin: 0;
+         padding: 20px;
+         background: #000;
+         color: #fff;
+         font-family: Arial, sans-serif;
+         text-align: center;
+       }
+
+      function showShipIntro(ship, callback) {
+      function showShipIntro(ship, timePerShip, callback) {
+        introRunning = true;
+
+        // Clear canvas
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+       // Create a robust color validation function
+       function getValidColor(color) {
+         // If it's already a valid hex color, use it
+         if (color.startsWith('#') && color.length === 7) {
+           return color;
+         }
+
+         // Convert named colors to hex
+         const namedColors = {
+           'orange': '#ff8c00',
+           'purple': '#800080',
+           'lime': '#32cd32',
+           'cyan': '#00ffff',
+           'magenta': '#ff00ff',
+           'yellow': '#ffff00',
+           'red': '#ff0000',
+           'green': '#00ff00',
+           'blue': '#0000ff'
+         };
+
+         // Remove # if it exists with a named color
+         const cleanColor = color.replace('#', '').toLowerCase();
+
+         // Return hex equivalent or fallback to white
+         return namedColors[cleanColor] || '#ffffff';
+       }
+
+       const validColor = getValidColor(ship.color);
+
+        // Draw dramatic background
+        const gradient = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, 300);
+        gradient.addColorStop(0, validColor + "40");
+        gradient.addColorStop(1, "#000000");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw ship large in center
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(3, 3); // Make ship 3x larger
+        ctx.rotate(ship.angle);
+
+        // Draw ship with glow effect
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = validColor;
+        ctx.strokeStyle = validColor;
+        ctx.fillStyle = validColor + "80";
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(ship.size, 0);
+        ctx.lineTo(-ship.size, ship.size / 2);
+        ctx.lineTo(-ship.size / 2, 0);
+        ctx.lineTo(-ship.size, -ship.size / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Draw title with dramatic effect
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = validColor;
+        ctx.lineWidth = 2;
+
+        // Main title
+        ctx.font = "bold 32px Arial";
+        ctx.strokeText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+        ctx.fillText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+
+        // Stats
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#ffff00";
+        ctx.fillText(`${ship.viewCount.toLocaleString()} views`, canvas.width / 2, canvas.height / 2 + 150);
+        ctx.fillText(`Speed: ${ship.speed.toFixed(1)}`, canvas.width / 2, canvas.height / 2 + 175);
+
+        // Warning text
+        ctx.font = "bold 24px Arial";
+        ctx.fillStyle = "#ff0000";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+        ctx.fillText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText("INCOMING THREAT DETECTED", canvas.width / 2, canvas.height / 2 - 120);
+
+        // Add some particle effects around the ship
+        for (let i = 0; i < 10; i++) {
+          const angle = (Date.now() * 0.01 + i * 0.6) % (Math.PI * 2);
+          const radius = 100 + Math.sin(Date.now() * 0.005 + i) * 20;
+          const x = canvas.width / 2 + Math.cos(angle) * radius;
+          const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+          ctx.fillStyle = validColor + "80";
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Use calculated time per ship
+        setTimeout(() => {
+          currentIntroShip++;
+          if (currentIntroShip < ships.length) {
+            showShipIntro(ships[currentIntroShip], timePerShip, callback);
+          } else {
+            // Intro complete
+            introRunning = false;
+            currentIntroShip = 0;
+
+            // Show final "BATTLE START" screen
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.font = "bold 48px Arial";
+            ctx.fillStyle = "#ff0000";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.strokeText("BATTLE START!", canvas.width / 2, canvas.height / 2);
+            ctx.fillText("BATTLE START!", canvas.width / 2, canvas.height / 2);
+
+            setTimeout(() => {
+              // Clear canvas and show normal game view
+              ctx.fillStyle = "#111";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              callback();
+            }, 200); // Final screen: 0.2 seconds
+          }
+        }, timePerShip); // Dynamic time per ship
+      }
+       canvas {
+         border: 2px solid #fff;
+         background: #111;
+       }
+
+       .controls {
+         margin: 20px 0;
+       }
+
+       input {
+         margin: 5px;
+         padding: 5px;
+         background: #333;
+         color: #fff;
+         border: 1px solid #666;
+       }
+
+       button {
+         padding: 10px 20px;
+         background: #ff0000;
+         color: #fff;
+         border: none;
+         cursor: pointer;
+         margin: 5px;
+       }
+
+       button:hover {
+         background: #cc0000;
+       }
+
+       .ship-list {
+         margin: 20px 0;
+         text-align: left;
+         display: inline-block;
+       }
+
+       .winner {
+         font-size: 24px;
+         color: #ff0000;
+         font-weight: bold;
+         margin: 20px 0;
+       }
+    </style>
+  </head>
+  <body>
+    <h1>🚀 YouTube Asteroids Battle Royale 🚀</h1>
+
+    <div class="controls">
+      <input
+        type="url"
+        id="jsonUrl"
+        placeholder="JSON Feed URL"
+        style="width: 400px"
+        value="./youtube_data.json"
+      />
+      <button onclick="loadShipsFromJson()">Load Ships from JSON</button>
+      <button onclick="startBattle()">Start Battle!</button>
+      <button onclick="resetGame()">Reset</button>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <div class="ship-list">
+      <h3>Ships in Battle:</h3>
+      <div id="shipList"></div>
+    </div>
+
+    <div id="winner" class="winner"></div>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+
+      let ships = [];
+      let bullets = [];
+      let explosions = [];
+      let gameRunning = false;
+      let introRunning = false;
+      let currentIntroShip = 0;
+      let gameLoop;
+
+      class Ship {
+        constructor(name, viewCount, x, y, color) {
+          this.name = name;
+          this.viewCount = viewCount;
+          this.x = x;
+          this.y = y;
+          this.angle = Math.random() * Math.PI * 2;
+          this.speed = 1.0; // Default speed, will be set based on ranking
+          this.health = 100;
+          this.color = color;
+          this.size = 15;
+          this.lastShot = 0;
+          this.target = null;
+          this.vx = 0;
+          this.vy = 0;
+
+          // AI behavior parameters
+          this.changeDirectionTimer = 0;
+          this.avoidanceRadius = 50;
+        }
+
+        update() {
+          if (this.health <= 0) return;
+
+          // AI behavior
+          this.aiUpdate();
+
+          // Move ship
+          this.x += this.vx;
+          this.y += this.vy;
+
+          // Wrap around screen
+          if (this.x < 0) this.x = canvas.width;
+          if (this.x > canvas.width) this.x = 0;
+          if (this.y < 0) this.y = canvas.height;
+          if (this.y > canvas.height) this.y = 0;
+
+          // Shoot at enemies
+          if (Date.now() - this.lastShot > 500) {
+            // Shoot every 500ms
+            this.shoot();
+            this.lastShot = Date.now();
+          }
+        }
+
+        aiUpdate() {
+          const aliveShips = ships.filter((s) => s.health > 0 && s !== this);
+          if (aliveShips.length === 0) return;
+
+          // Find nearest enemy
+          let nearestEnemy = null;
+          let nearestDistance = Infinity;
+
+          aliveShips.forEach((ship) => {
+            const dist = this.distanceTo(ship);
+            if (dist < nearestDistance) {
+              nearestDistance = dist;
+              nearestEnemy = ship;
+            }
+          });
+
+          if (nearestEnemy) {
+            // Calculate angle to enemy
+            const dx = nearestEnemy.x - this.x;
+            const dy = nearestEnemy.y - this.y;
+            const angleToEnemy = Math.atan2(dy, dx);
+
+            // Reduce randomness when few ships remain to ensure engagement
+            const randomFactor =
+              aliveShips.length > 2
+                ? Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.5
+                : Math.sin(Date.now() * 0.001 + this.x * 0.01) * 0.1;
+            const targetAngle = angleToEnemy + randomFactor;
+
+            // Update velocity based on angle and speed
+            this.vx = Math.cos(targetAngle) * this.speed;
+            this.vy = Math.sin(targetAngle) * this.speed;
+
+            // Point ship in direction of movement
+            this.angle = targetAngle;
+
+            // Reduce avoidance when only 2 ships remain to force engagement
+            const shouldAvoid = aliveShips.length > 2;
+            if (shouldAvoid) {
+              aliveShips.forEach((ship) => {
+                const dist = this.distanceTo(ship);
+                if (dist < this.avoidanceRadius && dist > 0) {
+                  const avoidAngle = Math.atan2(
+                    this.y - ship.y,
+                    this.x - ship.x,
+                  );
+                  this.vx += Math.cos(avoidAngle) * 2;
+                  this.vy += Math.sin(avoidAngle) * 2;
+                }
+              });
+            }
+
+            // Limit speed
+            const currentSpeed = Math.sqrt(
+              this.vx * this.vx + this.vy * this.vy,
+            );
+            if (currentSpeed > this.speed) {
+              this.vx = (this.vx / currentSpeed) * this.speed;
+              this.vy = (this.vy / currentSpeed) * this.speed;
+            }
+          }
+        }
+
+        shoot() {
+          const aliveEnemies = ships.filter((s) => s.health > 0 && s !== this);
+          if (aliveEnemies.length === 0) return;
+
+          // Find best target (closest)
+          let target = aliveEnemies.reduce((closest, ship) => {
+            const dist = this.distanceTo(ship);
+            return dist < this.distanceTo(closest) ? ship : closest;
+          });
+
+          // Predict target position
+          const dx = target.x - this.x;
+          const dy = target.y - this.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          // Lead the target
+          const bulletSpeed = 8;
+          const timeToTarget = distance / bulletSpeed;
+          const predictedX = target.x + target.vx * timeToTarget;
+          const predictedY = target.y + target.vy * timeToTarget;
+
+          const aimAngle = Math.atan2(predictedY - this.y, predictedX - this.x);
+
+          bullets.push(new Bullet(this.x, this.y, aimAngle, this.color, this));
+        }
+
+        distanceTo(other) {
+          const dx = other.x - this.x;
+          const dy = other.y - this.y;
+          return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        takeDamage(damage) {
+          this.health -= damage;
+          if (this.health < 0) this.health = 0;
+        }
+
+        draw() {
+          if (this.health <= 0) return;
+
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.angle);
+
+          // Draw ship
+          ctx.strokeStyle = this.color;
+          ctx.fillStyle = this.color + "40";
+          ctx.lineWidth = 2;
+
+          ctx.beginPath();
+          ctx.moveTo(this.size, 0);
+          ctx.lineTo(-this.size, this.size / 2);
+          ctx.lineTo(-this.size / 2, 0);
+          ctx.lineTo(-this.size, -this.size / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.restore();
+
+          // Draw health bar
+          const barWidth = 30;
+          const barHeight = 4;
+          ctx.fillStyle = "#ff0000";
+          ctx.fillRect(
+            this.x - barWidth / 2,
+            this.y - this.size - 10,
+            barWidth,
+            barHeight,
+          );
+          ctx.fillStyle = "#00ff00";
+          ctx.fillRect(
+            this.x - barWidth / 2,
+            this.y - this.size - 10,
+            barWidth * (this.health / 100),
+            barHeight,
+          );
+
+          // Draw name
+          ctx.fillStyle = "#fff";
+          ctx.font = "12px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText(this.name, this.x, this.y - this.size - 15);
+        }
+      }
+
+      class Bullet {
+        constructor(x, y, angle, color, owner) {
+          this.x = x;
+          this.y = y;
+          this.vx = Math.cos(angle) * 6; // Slower bullets too
+          this.vy = Math.sin(angle) * 6;
+          this.color = color;
+          this.owner = owner;
+          this.life = 100; // Bullets disappear after 100 frames
+        }
+
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.life--;
+
+          // Wrap around screen
+          if (this.x < 0) this.x = canvas.width;
+          if (this.x > canvas.width) this.x = 0;
+          if (this.y < 0) this.y = canvas.height;
+          if (this.y > canvas.height) this.y = 0;
+
+          // Check collision with ships
+          ships.forEach((ship) => {
+            if (ship !== this.owner && ship.health > 0) {
+              const dx = ship.x - this.x;
+              const dy = ship.y - this.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+
+              if (distance < ship.size) {
+                ship.takeDamage(25);
+                this.life = 0; // Destroy bullet
+
+                // Create explosion when ship is destroyed
+                if (ship.health <= 0) {
+                  createExplosion(ship.x, ship.y, ship.color);
+                }
+              }
+            }
+          });
+        }
+
+        draw() {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        isDead() {
+          return this.life <= 0;
+        }
+      }
+
+      class Particle {
+        constructor(x, y, color) {
+          this.x = x;
+          this.y = y;
+          this.vx = (Math.random() - 0.5) * 10;
+          this.vy = (Math.random() - 0.5) * 10;
+          this.life = 1.0;
+          this.decay = Math.random() * 0.02 + 0.01;
+          this.size = Math.random() * 4 + 2;
+          this.color = color;
+          this.alpha = 1.0;
+        }
+
+        update() {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vx *= 0.98; // friction
+          this.vy *= 0.98;
+          this.life -= this.decay;
+          this.alpha = this.life;
+          this.size *= 0.995;
+        }
+
+        draw() {
+          ctx.save();
+          ctx.globalAlpha = this.alpha;
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Add glow effect
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        isDead() {
+          return this.life <= 0 || this.size <= 0.5;
+        }
+      }
+
+      class Explosion {
+        constructor(x, y, color) {
+          this.particles = [];
+          this.life = 1.0;
+
+          // Create particles for the explosion
+          for (let i = 0; i < 20; i++) {
+            this.particles.push(new Particle(x, y, color));
+          }
+
+          // Add some bright white particles for flash effect
+          for (let i = 0; i < 10; i++) {
+            this.particles.push(new Particle(x, y, "#ffffff"));
+          }
+
+          // Add some orange/red particles for fire effect
+          const fireColors = ["#ff4500", "#ff6600", "#ff8800", "#ffaa00"];
+          for (let i = 0; i < 15; i++) {
+            const fireColor =
+              fireColors[Math.floor(Math.random() * fireColors.length)];
+            this.particles.push(new Particle(x, y, fireColor));
+          }
+        }
+
+        update() {
+          this.particles.forEach((particle) => particle.update());
+          this.particles = this.particles.filter(
+            (particle) => !particle.isDead(),
+          );
+          this.life -= 0.02;
+        }
+
+        draw() {
+          this.particles.forEach((particle) => particle.draw());
+        }
+
+        isDead() {
+          return this.particles.length === 0 || this.life <= 0;
+        }
+      }
+
+      function createExplosion(x, y, color) {
+        explosions.push(new Explosion(x, y, color));
+      }
+
+      function showShipIntro(ship, callback) {
+        introRunning = true;
+
+        // Clear canvas
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw dramatic background
+        const gradient = ctx.createRadialGradient(
+          canvas.width / 2,
+          canvas.height / 2,
+          0,
+          canvas.width / 2,
+          canvas.height / 2,
+          300,
+        );
+        gradient.addColorStop(0, ship.color + "40");
+        gradient.addColorStop(1, "#000000");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw ship large in center
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.scale(3, 3); // Make ship 3x larger
+        ctx.rotate(ship.angle);
+
+        // Draw ship with glow effect
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = ship.color;
+        ctx.strokeStyle = ship.color;
+        ctx.fillStyle = ship.color + "80";
+        ctx.lineWidth = 3;
+
+        ctx.beginPath();
+        ctx.moveTo(ship.size, 0);
+        ctx.lineTo(-ship.size, ship.size / 2);
+        ctx.lineTo(-ship.size / 2, 0);
+        ctx.lineTo(-ship.size, -ship.size / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Draw title with dramatic effect
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#ffffff";
+        ctx.strokeStyle = ship.color;
+        ctx.lineWidth = 2;
+
+        // Main title
+        ctx.font = "bold 32px Arial";
+        ctx.strokeText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+        ctx.fillText(ship.name, canvas.width / 2, canvas.height / 2 + 120);
+
+        // Stats
+        ctx.font = "18px Arial";
+        ctx.fillStyle = "#ffff00";
+        ctx.fillText(
+          `${ship.viewCount.toLocaleString()} views`,
+          canvas.width / 2,
+          canvas.height / 2 + 150,
+        );
+        ctx.fillText(
+          `Speed: ${ship.speed.toFixed(1)}`,
+          canvas.width / 2,
+          canvas.height / 2 + 175,
+        );
+
+        // Warning text
+        ctx.font = "bold 24px Arial";
+        ctx.fillStyle = "#ff0000";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 1;
+        ctx.strokeText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+        ctx.fillText("WARNING", canvas.width / 2, canvas.height / 2 - 150);
+
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(
+          "INCOMING THREAT DETECTED",
+          canvas.width / 2,
+          canvas.height / 2 - 120,
+        );
+
+        // Add some particle effects around the ship
+        for (let i = 0; i < 10; i++) {
+          const angle = (Date.now() * 0.01 + i * 0.6) % (Math.PI * 2);
+          const radius = 100 + Math.sin(Date.now() * 0.005 + i) * 20;
+          const x = canvas.width / 2 + Math.cos(angle) * radius;
+          const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+          ctx.fillStyle = ship.color + "80";
+          ctx.beginPath();
+          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Continue for 3 seconds
+        setTimeout(() => {
+          currentIntroShip++;
+          if (currentIntroShip < ships.length) {
+            showShipIntro(ships[currentIntroShip], callback);
+          } else {
+            // Intro complete
+            introRunning = false;
+            currentIntroShip = 0;
+
+            // Show final "BATTLE START" screen
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.textAlign = "center";
+            ctx.font = "bold 48px Arial";
+            ctx.fillStyle = "#ff0000";
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            ctx.strokeText(
+              "BATTLE START!",
+              canvas.width / 2,
+              canvas.height / 2,
+            );
+            ctx.fillText("BATTLE START!", canvas.width / 2, canvas.height / 2);
+
+            setTimeout(() => {
+              // Clear canvas and show normal game view
+              ctx.fillStyle = "#111";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              callback();
+            }, 2000);
+          }
+        }, 3000);
+      }
+
+      function showShipBatchIntro(callback) {
+        introRunning = true;
+        currentIntroShip = 0;
+
+        // Calculate timing - 2 seconds total, reserve 500ms for battle start screen
+        const totalShipTime = 1500; // 1.5 seconds for all ships
+        const batchCount = Math.ceil(ships.length / 5);
+        const timePerBatch = Math.max(200, totalShipTime / batchCount); // Minimum 200ms per batch
+
+        function showNextBatch() {
+          // Clear canvas
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Get current batch of ships (up to 5)
+          const batchStart = Math.floor(currentIntroShip / 5) * 5;
+          const batchEnd = Math.min(batchStart + 5, ships.length);
+          const currentBatch = ships.slice(batchStart, batchEnd);
+
+          // Draw background gradient using the color of the first ship in batch
+          const primaryShip = currentBatch[0];
+          const gradient = ctx.createRadialGradient(
+            canvas.width / 2,
+            canvas.height / 2,
+            0,
+            canvas.width / 2,
+            canvas.height / 2,
+            300,
+          );
+          gradient.addColorStop(0, primaryShip.color + "20");
+          gradient.addColorStop(1, "#000000");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Warning text
+          ctx.textAlign = "center";
+          ctx.font = "bold 24px Arial";
+          ctx.fillStyle = "#ff0000";
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 1;
+          ctx.strokeText("INCOMING THREATS", canvas.width / 2, 80);
+          ctx.fillText("INCOMING THREATS", canvas.width / 2, 80);
+
+          // Draw ships in a row
+          const startX = canvas.width / 2 - (currentBatch.length - 1) * 60;
+          currentBatch.forEach((ship, index) => {
+            const x = startX + index * 120;
+            const y = canvas.height / 2 - 50;
+
+            // Draw ship
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(2, 2);
+            ctx.rotate(ship.angle);
+
+            // Ship glow effect
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = ship.color;
+            ctx.strokeStyle = ship.color;
+            ctx.fillStyle = ship.color + "80";
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.moveTo(ship.size, 0);
+            ctx.lineTo(-ship.size, ship.size / 2);
+            ctx.lineTo(-ship.size / 2, 0);
+            ctx.lineTo(-ship.size, -ship.size / 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.restore();
+
+            // Ship name below
+            ctx.font = "bold 14px Arial";
+            ctx.fillStyle = ship.color;
+            ctx.fillText(ship.name, x, y + 60);
+
+            // View count
+            ctx.font = "12px Arial";
+            ctx.fillStyle = "#ffff00";
+            ctx.fillText(`${ship.viewCount.toLocaleString()}`, x, y + 80);
+          });
+
+          // Particle effects
+          for (let i = 0; i < 15; i++) {
+            const angle = (Date.now() * 0.01 + i * 0.4) % (Math.PI * 2);
+            const radius = 200 + Math.sin(Date.now() * 0.003 + i) * 50;
+            const x = canvas.width / 2 + Math.cos(angle) * radius;
+            const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+            ctx.fillStyle = primaryShip.color + "60";
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          currentIntroShip = batchEnd;
+
+          if (currentIntroShip >= ships.length) {
+            // All ships shown, show battle start
+            setTimeout(() => {
+              introRunning = false;
+              currentIntroShip = 0;
+
+              // Final "BATTLE START" screen
+              ctx.fillStyle = "#000";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+              ctx.textAlign = "center";
+              ctx.font = "bold 48px Arial";
+              ctx.fillStyle = "#ff0000";
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 3;
+              ctx.strokeText(
+                "BATTLE START!",
+                canvas.width / 2,
+                canvas.height / 2,
+              );
+              ctx.fillText(
+                "BATTLE START!",
+                canvas.width / 2,
+                canvas.height / 2,
+              );
+
+              setTimeout(() => {
+                ctx.fillStyle = "#111";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                callback();
+              }, 500);
+            }, timePerBatch);
+          } else {
+            // Show next batch
+            setTimeout(showNextBatch, timePerBatch);
+          }
+        }
+
+        showNextBatch();
+      }
+
+      async function loadShipsFromJson() {
+        const urlInput = document.getElementById("jsonUrl");
+        const url = urlInput.value.trim();
+
+        if (!url) {
+          alert("Please enter a JSON URL!");
+          return;
+        }
+
+        try {
+          // Show loading message
+          document.getElementById("shipList").innerHTML =
+            "<div>Loading ships...</div>";
+
+          // Fetch JSON data
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data = await response.json();
+
+          // Clear existing ships
+          ships = [];
+          bullets = [];
+          explosions = [];
+
+          // Parse feed entries
+          if (
+            !data.feed ||
+            !data.feed.entry ||
+            !Array.isArray(data.feed.entry)
+          ) {
+            throw new Error(
+              "Invalid JSON structure. Expected feed.entry array.",
+            );
+          }
+
+          const colors = [
+            "#ff0000",
+            "#00ff00",
+            "#0000ff",
+            "#ffff00",
+            "#ff00ff",
+            "#00ffff",
+            "#ff8c00", // orange
+            "#800080", // purple
+            "#32cd32", // lime
+            "#00ffff", // cyan (duplicate, but safe)
+            "#ff00ff", // magenta (duplicate, but safe)
+            "#ffff00", // yellow (duplicate, but safe)
+          ];
+
+          data.feed.entry.forEach((entry, index) => {
+            try {
+              const name =
+                entry.title?.$t || entry.title || `Video ${index + 1}`;
+              const viewCountStr = entry["yt$statistics"]?.viewCount || "0";
+              const viewCount = parseInt(viewCountStr);
+
+              if (viewCount > 0) {
+                const color = colors[index % colors.length];
+                const x = Math.random() * (canvas.width - 100) + 50;
+                const y = Math.random() * (canvas.height - 100) + 50;
+
+                ships.push(new Ship(name, viewCount, x, y, color));
+              }
+            } catch (entryError) {
+              console.warn(`Error processing entry ${index}:`, entryError);
+            }
+          });
+
+          if (ships.length === 0) {
+            throw new Error("No valid ships found in JSON data.");
+          }
+
+          // Sort ships by view count (descending) and assign ranking-based speeds
+          ships.sort((a, b) => b.viewCount - a.viewCount);
+
+          // Assign speeds based on ranking - higher rank (lower index) = higher speed
+          ships.forEach((ship, index) => {
+            // Speed range from 5.0 (1st place) to 1.0 (last place)
+            const minSpeed = 1.0;
+            const maxSpeed = 5.0;
+            const speedRange = maxSpeed - minSpeed;
+
+            if (ships.length === 1) {
+              ship.speed = maxSpeed;
+            } else {
+              // Linear interpolation based on ranking
+              const rankingRatio = index / (ships.length - 1);
+              ship.speed = maxSpeed - rankingRatio * speedRange;
+            }
+
+            // Round to 1 decimal place for cleaner display
+            ship.speed = Math.round(ship.speed * 10) / 10;
+          });
+          updateShipList();
+
+          // Clear winner message and canvas
+          document.getElementById("winner").innerHTML = "";
+          ctx.fillStyle = "#111";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          alert(`Loaded ${ships.length} ships successfully!`);
+
+          // Start the intro sequence
+          if (ships.length > 0) {
+            currentIntroShip = 0;
+            showShipBatchIntro(() => {
+              // Intro complete - ready to go!
+              console.log("All ships introduced! Ready for battle!");
+            });
+          }
+        } catch (error) {
+          console.error("Error loading JSON:", error);
+          alert(`Error loading ships: ${error.message}`);
+          document.getElementById("shipList").innerHTML =
+            "<div>Failed to load ships.</div>";
+        }
+      }
+
+      function updateShipList() {
+        const shipList = document.getElementById("shipList");
+        shipList.innerHTML = ships
+          .map(
+            (ship) =>
+              `<div style="color: ${ship.color};">
+                    ${ship.name} - ${ship.viewCount.toLocaleString()} views (Speed: ${ship.speed.toFixed(1)})
+                </div>`,
+          )
+          .join("");
+      }
+
+      function startBattle() {
+        if (introRunning) {
+          alert("Please wait for ship introductions to finish!");
+          return;
+        }
+
+        if (ships.length < 2) {
+          alert("Need at least 2 ships to start battle!");
+          return;
+        }
+
+        gameRunning = true;
+        document.getElementById("winner").innerHTML = "";
+
+        gameLoop = setInterval(update, 16); // ~60 FPS
+      }
+
+      function update() {
+        // Clear canvas
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Update and draw ships
+        ships.forEach((ship) => {
+          ship.update();
+          ship.draw();
+        });
+
+        // Update and draw bullets
+        bullets = bullets.filter((bullet) => {
+          bullet.update();
+          bullet.draw();
+          return !bullet.isDead();
+        });
+
+        // Update and draw explosions
+        explosions.forEach((explosion) => {
+          explosion.update();
+          explosion.draw();
+        });
+        explosions = explosions.filter((explosion) => !explosion.isDead());
+
+        // Check for winner
+        const aliveShips = ships.filter((ship) => ship.health > 0);
+        if (aliveShips.length === 1) {
+          clearInterval(gameLoop);
+          gameRunning = false;
+          const winner = aliveShips[0];
+          document.getElementById("winner").innerHTML =
+            `🏆 ${winner.name} is the most powerful YouTube video! 🏆`;
+
+          // Show dramatic celebration screen
+          showWinnerCelebration(winner);
+        } else if (aliveShips.length === 0) {
+          clearInterval(gameLoop);
+          gameRunning = false;
+          document.getElementById("winner").innerHTML =
+            "💥 All ships destroyed! 💥";
+        }
+      }
+
+      function resetGame() {
+        clearInterval(gameLoop);
+        gameRunning = false;
+        ships = [];
+        bullets = [];
+        explosions = [];
+        updateShipList();
+        document.getElementById("winner").innerHTML = "";
+
+        // Clear canvas
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      function showWinnerCelebration(winnerShip) {
+        let celebrationFrames = 0;
+        const maxCelebrationFrames = 300; // 5 seconds at 60fps
+
+        function animateCelebration() {
+          celebrationFrames++;
+
+          // Clear canvas with animated background
+          const hue = (celebrationFrames * 3) % 360;
+          const bgColor = `hsl(${hue}, 50%, 10%)`;
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Create victory gradient
+          const gradient = ctx.createRadialGradient(
+            canvas.width / 2,
+            canvas.height / 2,
+            0,
+            canvas.width / 2,
+            canvas.height / 2,
+            400,
+          );
+          gradient.addColorStop(0, winnerShip.color + "40");
+          gradient.addColorStop(0.5, winnerShip.color + "20");
+          gradient.addColorStop(1, "#000000");
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+          // Draw winner ship in center with rotation and scaling
+          ctx.save();
+          ctx.translate(canvas.width / 2, canvas.height / 2 - 50);
+          const scale = 3 + Math.sin(celebrationFrames * 0.1) * 0.5;
+          ctx.scale(scale, scale);
+          ctx.rotate(celebrationFrames * 0.05);
+
+          // Ship glow effect
+          ctx.shadowBlur = 30;
+          ctx.shadowColor = winnerShip.color;
+          ctx.strokeStyle = winnerShip.color;
+          ctx.fillStyle = winnerShip.color + "CC";
+          ctx.lineWidth = 4;
+
+          ctx.beginPath();
+          ctx.moveTo(winnerShip.size, 0);
+          ctx.lineTo(-winnerShip.size, winnerShip.size / 2);
+          ctx.lineTo(-winnerShip.size / 2, 0);
+          ctx.lineTo(-winnerShip.size, -winnerShip.size / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+
+          // Animated victory text
+          ctx.textAlign = "center";
+          const textScale = 1 + Math.sin(celebrationFrames * 0.15) * 0.2;
+
+          // VICTORY text
+          ctx.font = `bold ${48 * textScale}px Arial`;
+          ctx.fillStyle = "#FFD700";
+          ctx.strokeStyle = "#FF0000";
+          ctx.lineWidth = 3;
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = "#FFD700";
+
+          ctx.strokeText("VICTORY!", canvas.width / 2, canvas.height / 2 + 120);
+          ctx.fillText("VICTORY!", canvas.width / 2, canvas.height / 2 + 120);
+
+          // Winner name
+          ctx.font = `bold ${24 * textScale}px Arial`;
+          ctx.fillStyle = winnerShip.color;
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 2;
+          ctx.shadowColor = winnerShip.color;
+
+          ctx.strokeText(
+            winnerShip.name,
+            canvas.width / 2,
+            canvas.height / 2 + 160,
+          );
+          ctx.fillText(
+            winnerShip.name,
+            canvas.width / 2,
+            canvas.height / 2 + 160,
+          );
+
+          // "Most Powerful YouTube Video!" text
+          ctx.font = "bold 20px Arial";
+          ctx.fillStyle = "#FFFFFF";
+          ctx.strokeStyle = winnerShip.color;
+          ctx.lineWidth = 1;
+
+          ctx.strokeText(
+            "Most Powerful YouTube Video!",
+            canvas.width / 2,
+            canvas.height / 2 + 190,
+          );
+          ctx.fillText(
+            "Most Powerful YouTube Video!",
+            canvas.width / 2,
+            canvas.height / 2 + 190,
+          );
+
+          // View count celebration
+          ctx.font = "18px Arial";
+          ctx.fillStyle = "#FFD700";
+          ctx.fillText(
+            `${winnerShip.viewCount.toLocaleString()} Views!`,
+            canvas.width / 2,
+            canvas.height / 2 + 220,
+          );
+
+          // Create celebration particles
+          for (let i = 0; i < 20; i++) {
+            const angle =
+              (celebrationFrames * 0.02 + i * 0.314) % (Math.PI * 2);
+            const radius = 100 + Math.sin(celebrationFrames * 0.05 + i) * 50;
+            const x = canvas.width / 2 + Math.cos(angle) * radius;
+            const y = canvas.height / 2 + Math.sin(angle) * radius;
+
+            ctx.fillStyle = winnerShip.color + "80";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = winnerShip.color;
+            ctx.beginPath();
+            ctx.arc(
+              x,
+              y,
+              4 + Math.sin(celebrationFrames * 0.1 + i) * 2,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+          }
+
+          // Add sparkle effects
+          for (let i = 0; i < 15; i++) {
+            const sparkleX = Math.random() * canvas.width;
+            const sparkleY = Math.random() * canvas.height;
+            const sparkleSize = Math.random() * 3 + 1;
+            const sparkleAlpha =
+              Math.sin(celebrationFrames * 0.2 + i) * 0.5 + 0.5;
+
+            ctx.fillStyle = `rgba(255, 215, 0, ${sparkleAlpha})`;
+            ctx.shadowBlur = 5;
+            ctx.shadowColor = "#FFD700";
+            ctx.beginPath();
+            ctx.arc(sparkleX, sparkleY, sparkleSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Continue animation if not finished
+          if (celebrationFrames < maxCelebrationFrames) {
+            requestAnimationFrame(animateCelebration);
+          } else {
+            // Reset to normal view after celebration
+            ctx.fillStyle = "#111";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+
+        // Start the celebration animation
+        animateCelebration();
+      }
+
+      // Initial canvas clear
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Draw instructions
+      ctx.fillStyle = "#666";
+      ctx.font = "20px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        "Add YouTube videos and watch them battle!",
+        canvas.width / 2,
+        canvas.height / 2 - 20,
+      );
+      ctx.fillText(
+        "Higher view count = faster ships!",
+        canvas.width / 2,
+        canvas.height / 2 + 20,
+      );
+    </script>
+  </body>
+</html>
